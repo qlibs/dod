@@ -1,0 +1,351 @@
+// <!--
+// The MIT License (MIT)
+//
+// Copyright (c) 2025 Kris Jusiak <kris@jusiak.net>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+#if 0
+// -->
+[Overview](#Overview) / [Examples](#Examples) / [API](#API) / [FAQ](#FAQ) / [Resources](#Resources)
+
+## `DoD`: Data-Oriented Design library
+
+[![MIT Licence](http://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/mit)
+[![Version](https://img.shields.io/github/v/release/qlibs/dod)](https://github.com/qlibs/dod/releases)
+[![Build](https://img.shields.io/badge/build-green.svg)]()
+[![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)]()
+
+  > https://en.wikipedia.org/wiki/Data-oriented_design <br/>
+  > https://en.wikipedia.org/wiki/Row_polymorphism <br/>
+  > https://en.wikipedia.org/wiki/Property_(programming) <br/>
+
+### Features
+
+### Requirements
+
+- C++26* ([clang-p2996](https://github.com/bloomberg/clang-p2996))
+
+### Overview
+
+```cpp
+```
+
+### API
+
+> https://github.com/qlibs/dod/blob/main/dod
+
+### FAQ
+
+### Resources
+
+> Reflection for C++26 - https://wg21.link/P2996 <br/>
+> Practical Data-Oriented Design (DoD) - https://www.youtube.com/watch?v=IroPQ150F6c <br/>
+> Data-Oriented Design and C++ - https://www.youtube.com/watch?v=rX0ItVEVjHc <br/>
+> Data-Oriented Design Revisited - https://www.youtube.com/watch?v=KOZcJwGdQok <br/>
+> Data-Oriented Design and Modern C++ - https://www.youtube.com/watch?v=GoIOnQEmXbs <br/>
+> Data-Oriented Design and Entity Component System Explained - https://www.youtube.com/watch?v=xm4AQj5PHT4 <br/>
+> Data-Oriented Design in Practice - https://www.youtube.com/watch?v=NWMx1Q66c14 <br/>
+> Data-Oriented Design Story - https://www.youtube.com/watch?v=fv43GuesjuM <br/>
+> Data-Oriented Design - https://www.dataorienteddesign.com/dodbook <br/>
+> Data-Oriented Demo: SOA, composition - https://www.youtube.com/watch?v=ZHqFrNyLlpA <br/>
+> Data-Oriented Approach to Using Component Systems - https://www.youtube.com/watch?v=p65Yt20pw0g <br/>
+> Data-Orientation For The Win - https://www.youtube.com/watch?v=QbffGSgsCcQ <br/>
+
+### License
+
+> [MIT](LICENSE)
+
+<!--
+#endif
+module;
+
+#if __cpp_lib_modules
+export import std; /// import std; export import std.meta;
+#else
+#include <cstdint>
+
+#include <experimental/meta>
+#include <memory>
+#include <ranges>
+#include <vector>
+#include <concepts>
+
+#include <numeric>
+#include <algorithm>
+#endif
+
+namespace dod::inline v1_0_0 {
+inline namespace type_traits {
+namespace detail {
+template<class T> struct pack {
+  struct impl;
+  consteval {
+    auto&& members = nonstatic_data_members_of(^^T, std::meta::access_context::current());
+    std::ranges::sort(members, [](auto lhs, auto rhs) {
+      return size_of(lhs) < size_of(rhs);
+    });
+    define_aggregate(^^impl, members | std::views::transform(
+      [](auto member) {
+        return data_member_spec(type_of(member), {.name = identifier_of(member)});
+      })
+    );
+  }
+};
+} // namespace detail
+
+/*
+ * Object types have alignment requirements (3.9.1, 3.9.2).
+ * The alignment of a complete object type is an
+ * implementation-defined integer value representing a number
+ * of bytes; an object is allocated at an address that meets
+ * the alignment requirements of its object type.
+*/
+template<class T> using pack_layout_t = detail::pack<T>::impl;
+
+template<class T>
+inline constexpr auto is_packed_layout_v = [] {
+  auto&& members = nonstatic_data_members_of(^^T, std::meta::access_context::current());
+  auto&& alignments = members | std::ranges::views::transform(std::meta::alignment_of);
+  auto&& sizes = members | std::ranges::views::transform(std::meta::size_of);
+  return sizeof(T) == std::accumulate(sizes.begin(), sizes.end(), 0u) or
+    std::ranges::is_sorted(alignments, std::less{}) or
+    std::ranges::is_sorted(alignments, std::greater{});
+}();
+} // namespace type_traits
+
+inline namespace utility {
+  // property (cold, warm)
+  /**
+   * https://en.wikipedia.org/wiki/Row_polymorphism
+   */
+  // extends
+  // copy
+} // namesapce utility
+
+inline namespace container {
+namespace detail {
+  template<class T, std::size_t N>
+  struct array {
+    struct impl;
+    consteval {
+      auto&& members = nonstatic_data_members_of(^^T, std::meta::access_context::current());
+      define_aggregate(^^impl, members | std::views::transform(
+        [](auto member) {
+          const auto type = substitute(^^std::array, {
+            type_of(member),
+            std::meta::reflect_value(N),
+          });
+          return data_member_spec(type, {.name = identifier_of(member)});
+        })
+      );
+    }
+  };
+} // namespace detail
+
+template<class T, std::size_t N>
+using array = detail::array<T, N>::impl;
+
+template<class T, class TAllocator = std::allocator<T>>
+class vector;
+} // namespace container
+} // namespace dod
+
+#ifndef NTEST
+consteval {
+  constexpr auto expect = [](std::same_as<bool> auto cond) {
+    if (not cond) { void failed(); failed(); }
+  };
+
+  /// dod::type_traits
+  {
+    struct empty {
+               // size: 1b => size: 1b
+               //             --------
+               //             size: 1b
+    };
+    expect(1u == sizeof(empty));
+
+    struct unpacked_1 {
+      std::int8_t  _1{}; // size: 1b => size: 4b
+      std::int32_t _2{}; // size: 4b => size: 4b
+      std::int8_t  _3{}; // size: 1b => size: 4b
+    };
+    expect(12u == sizeof(unpacked_1));
+
+    struct unpacked_2 {
+      std::int32_t _1{};  // size: 4b => size: 4b
+      std::int8_t  _2{};  // size: 1b => size: 8b
+      std::int32_t _3{};  // size: 4b => size: 12b
+    };
+    expect(12u == sizeof(unpacked_2));
+
+    struct packed_1 {
+      std::int32_t _1{};  // size: 4b => size: 4b
+    };
+    expect(4u == sizeof(packed_1));
+
+    struct packed_2 {
+      std::int8_t  _1{};  // size: 1b => size: 4b
+      std::int8_t  _2{};  // size: 1b => size: 4b
+      std::int32_t _3{};  // size: 4b => size: 8b
+    };
+    expect(8u == sizeof(packed_2));
+
+    struct packed_3 {
+      std::int32_t _1{};  // size: 4b => size: 4b
+      std::int8_t  _2{};  // size: 1b => size: 8b
+      std::int8_t  _3{};  // size: 1b => size: 8b
+    };
+    expect(8u == sizeof(packed_3));
+
+    struct packed_4 {
+      std::int32_t _1{};  // size: 4b => size: 4b
+      std::int8_t  _2{};  // size: 1b => size: 8b
+      std::int8_t  _3{};  // size: 1b => size: 8b
+      std::int8_t  _4{};  // size: 1b => size: 8b
+      std::int8_t  _5{};  // size: 1b => size: 8b
+      std::int32_t _6{};  // size: 1b => size: 12b
+    };
+    expect(12u == sizeof(packed_4));
+
+    struct packed_5 {
+      using _3_t = std::array<std::int8_t, 3u>;
+      std::int16_t _1{};  // size: 2b => size: 2b
+      std::int16_t _2{};  // size: 2b => size: 4b
+      _3_t _3{};          // size: 3b => size: 8b
+    };
+    expect(8u == sizeof(packed_5));
+
+    struct packed_6 {
+      std::int16_t _1{};  // size: 2b => size: 2b
+      std::int16_t _2{};  // size: 2b => size: 4b
+      std::int16_t _3{};  // size: 2b => size: 6b
+    };
+    expect(6u == sizeof(packed_6));
+
+    /// dod::pack_layout_t
+    {
+      expect(1u == sizeof(dod::pack_layout_t<empty>));
+
+      expect(8u == sizeof(dod::pack_layout_t<unpacked_1>));
+      expect(requires(dod::pack_layout_t<unpacked_1> p) { p._1; p._2; p._3; });
+
+      expect(12u == sizeof(dod::pack_layout_t<unpacked_2>));
+      expect(requires(dod::pack_layout_t<unpacked_2> p) { p._1; p._2; p._3; });
+
+      expect(4u == sizeof(dod::pack_layout_t<packed_1>));
+      expect(requires(dod::pack_layout_t<packed_1> p) { p._1; });
+
+      expect(8u == sizeof(dod::pack_layout_t<packed_2>));
+      expect(requires(dod::pack_layout_t<packed_2> p) { p._1; p._2; p._3; });
+
+      expect(8u == sizeof(dod::pack_layout_t<packed_3>));
+      expect(requires(dod::pack_layout_t<packed_3> p) { p._1; p._2; p._3; });
+
+      expect(12u == sizeof(dod::pack_layout_t<packed_4>));
+      expect(requires(dod::pack_layout_t<packed_4> p) { p._1; p._2; p._3; p._4; p._5; p._6; });
+
+      expect(8u == sizeof(dod::pack_layout_t<packed_5>));
+      expect(requires(dod::pack_layout_t<packed_5> p) { p._1; p._2; p._3; });
+
+      expect(6u == sizeof(dod::pack_layout_t<packed_6>));
+      expect(requires(dod::pack_layout_t<packed_6> p) { p._1; p._2; p._3; });
+    }
+
+    /// dod::is_packed_layout_v
+    {
+      expect(not dod::is_packed_layout_v<unpacked_1>);
+      expect(not dod::is_packed_layout_v<unpacked_2>);
+
+      expect(dod::is_packed_layout_v<empty>);
+      expect(dod::is_packed_layout_v<packed_1>);
+      expect(dod::is_packed_layout_v<packed_2>);
+      expect(dod::is_packed_layout_v<packed_3>);
+      expect(dod::is_packed_layout_v<packed_4>);
+      expect(dod::is_packed_layout_v<packed_5>);
+      expect(dod::is_packed_layout_v<packed_6>);
+    }
+  }
+
+  /// dod::utility::property
+  {
+  }
+
+  /// dod::utility::extends
+  {
+  }
+
+  /// dod::utility::copy
+  {
+  }
+
+  /// dod::container::array
+  {
+    {
+      struct empty{};
+      expect(sizeof(empty) == sizeof(dod::array<empty, 0u>));
+    }
+
+    {
+      struct s1 { std::int32_t _1{}; };
+      constexpr auto size = 8u;
+      expect(typeid(dod::array<s1, size>{}._1) == typeid(std::array<decltype(s1::_1), size>));
+    }
+
+    {
+      struct s2 { std::int32_t _1{}; std::uint32_t _2{}; };
+      constexpr auto size = 8u;
+      expect(typeid(dod::array<s2, size>{}._1) == typeid(std::array<decltype(s2::_1), size>));
+      expect(typeid(dod::array<s2, size>{}._2) == typeid(std::array<decltype(s2::_2), size>));
+    }
+
+    // todo
+    // array<int, 1u> // should work as normal array
+    // api a[], size() begin, end(), etc...
+  }
+
+  /// dod::container::vector
+  {
+  }
+
+  /// std::format
+  {
+  }
+}
+#endif // NTEST
+
+export module dod;
+
+export namespace dod {
+  inline namespace type_traits {
+    using dod::type_traits::pack_layout_t;
+    using dod::type_traits::is_packed_layout_v;
+  } // namespace type_traits
+
+  inline namespace utility {
+  } // namespace utility
+
+  inline namespace container {
+    using dod::container::array;
+  } // namespace container
+
+  inline namespace row {
+  } // namespace row
+} // namespace dod
